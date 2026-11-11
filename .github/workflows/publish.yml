@@ -1,0 +1,75 @@
+name: Publish
+
+# Trusted-publisher release: no API tokens in secrets.
+# One-time setup (PyPI account owner):
+#   PyPI -> Account -> Publishing -> Add pending publisher:
+#   owner myzticalbabe, repo madi, workflow publish.yml, environment pypi
+# Then: git tag vX.Y.Z && git push origin vX.Y.Z
+# TestPyPI first: same pending publisher on test.pypi.org, push a v*-rc tag.
+# NOTE (measured 2026-11-11 on grantforge): the portal entry MUST carry
+# the environment (testpypi/pypi). A blank environment field yields
+# `invalid-publisher` even when everything else matches.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Build sdist + wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+
+  publish-testpypi:
+    needs: build
+    if: contains(github.ref_name, '-rc')
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-pypi:
+    needs: build
+    if: "!contains(github.ref_name, '-rc')"
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
