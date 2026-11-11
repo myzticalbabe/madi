@@ -40,7 +40,13 @@ jobs:
 
   publish-testpypi:
     needs: build
-    if: contains(github.ref_name, '-rc')
+    # Gated on a repository variable because PyPI trusted publishing is a PORTAL fact:
+    # until a pending publisher exists for this repo/workflow and these environment
+    # names, every tag run ends in `invalid-publisher` and leaves a red X on a
+    # repository whose tests are green. Set PYPI_TRUSTED_PUBLISHER=true (Settings ->
+    # Variables) once the portal entries exist. The wheel is attached to the GitHub
+    # Release meanwhile, so the package is installable today either way.
+    if: vars.PYPI_TRUSTED_PUBLISHER == 'true' && contains(github.ref_name, '-rc')
     runs-on: ubuntu-latest
     environment: testpypi
     permissions:
@@ -59,7 +65,7 @@ jobs:
 
   publish-pypi:
     needs: build
-    if: "!contains(github.ref_name, '-rc')"
+    if: vars.PYPI_TRUSTED_PUBLISHER == 'true' && !contains(github.ref_name, '-rc')
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

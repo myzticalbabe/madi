@@ -18,6 +18,19 @@ Plus two stdlib-native instruments over extracted text:
   spoofs, path escapes, unicode tricks, oversized blobs. A probe that
   fires is a finding, never a silent drop.
 
+## Install
+
+```bash
+# the built wheel, attached to the release (no index needed)
+pip install https://github.com/myzticalbabe/madi/releases/download/v0.1.0/madi-0.1.0-py3-none-any.whl
+
+# or straight from the repository
+pip install "madi @ git+https://github.com/myzticalbabe/madi.git@v0.1.0"
+
+# the render rung (Playwright) is optional
+pip install "madi[browser] @ git+https://github.com/myzticalbabe/madi.git@v0.1.0"
+```
+
 ```python
 from madi import fetch, HyperEdgeBrowser
 
