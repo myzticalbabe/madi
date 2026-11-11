@@ -2,7 +2,7 @@
 """Pin this repo's `src/` at the front of sys.path.
 
 Without this, an ambient PYTHONPATH (e.g. a sibling checkout's `src/`)
-can shadow `grantforge` and the suite silently tests the wrong copy --
+can shadow `madi` and the suite silently tests the wrong copy --
 or fails on modules only this repo has. CI installs the package, where
 this is a harmless no-op.
 """

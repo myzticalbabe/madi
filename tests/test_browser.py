@@ -1,8 +1,8 @@
 # coding: utf-8
-"""Tests for grantforge.browser -- all offline-safe.
+"""Tests for madi.browser -- all offline-safe.
 
 Render/interact paths need Playwright + Chromium and are gated behind
-GRANTFORGE_LIVE_BROWSER=1. Everything else (taxonomy, screen, scorer,
+MADI_LIVE_BROWSER=1. Everything else (taxonomy, screen, scorer,
 shapes, lazy-dep error) runs everywhere, including CI.
 """
 
@@ -13,7 +13,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from grantforge.browser import (  # noqa: E402
+from madi.browser import (  # noqa: E402
     BROWSER_HEADERS,
     BROWSER_UA,
     HyperEdgeBrowser,
@@ -256,7 +256,7 @@ def test_render_without_playwright_raises_helpful(monkeypatch):
     monkeypatch.setitem(sys.modules, "playwright.sync_api", None)
     assert not playwright_available()
     b = HyperEdgeBrowser()
-    with pytest.raises(RuntimeError, match="pip install grantforge"):
+    with pytest.raises(RuntimeError, match="pip install madi"):
         b.goto("http://127.0.0.1:9/")
     b.close()
 
@@ -268,7 +268,7 @@ def test_screenshot_needs_evidence_dir():
     b.close()
 
 
-@pytest.mark.skipif(os.environ.get("GRANTFORGE_LIVE_BROWSER") != "1",
+@pytest.mark.skipif(os.environ.get("MADI_LIVE_BROWSER") != "1",
                     reason="needs Playwright+Chromium+network")
 def test_live_render_example_dot_com():
     with HyperEdgeBrowser() as b:

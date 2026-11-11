@@ -1,0 +1,41 @@
+[project]
+name = "madi"
+version = "0.1.0"
+description = "The one browsing instrument: fetch, challenge taxonomy, readability, discovery, native scorer, native screen"
+readme = "README.md"
+authors = [{name = "Azazael"}]
+license = {text = "CDDL-1.1"}
+requires-python = ">=3.13"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved Apache Software License",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Internet :: WWW/HTTP",
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+browser = [
+    # Render/interact rung of madi.browser (HyperEdgeBrowser.goto etc.).
+    # Everything else in that module is stdlib-only.
+    "playwright>=1.46",
+]
+test = [
+    "pytest>=8.3",
+]
+
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["madi*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]

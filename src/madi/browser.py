@@ -20,7 +20,7 @@ steps. This module folds every rung this tree has learned into one place:
 - Evidence: screenshots on demand into an evidence directory, so every
   extracted claim can be traced to a pixel.
 
-Playwright is an OPTIONAL dependency (``pip install grantforge[browser]``)
+Playwright is an OPTIONAL dependency (``pip install madi[browser]``)
 and is imported lazily: importing this module never requires it, and
 every render path raises a RuntimeError naming exactly what to install.
 """
@@ -109,7 +109,7 @@ def _require_playwright():
     except Exception as e:
         raise RuntimeError(
             "HyperEdgeBrowser render rung needs Playwright: "
-            "pip install grantforge[browser] && playwright install chromium "
+            "pip install madi[browser] && playwright install chromium "
             "(%s)" % (e,)
         )
 
@@ -235,7 +235,7 @@ class HyperEdgeBrowser:
 
     Usage::
 
-        with HyperEdgeBrowser(state_dir="~/.grantforge/browser",
+        with HyperEdgeBrowser(state_dir="~/.madi/browser",
                               evidence_dir="evidence/") as b:
             page = b.goto("https://portal.example/rfps")
             if page["state"] == "blocked":
