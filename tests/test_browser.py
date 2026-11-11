@@ -19,8 +19,10 @@ from grantforge.browser import (  # noqa: E402
     HyperEdgeBrowser,
     RelevanceScorer,
     detect_challenge,
+    discover_html,
     fetch,
     featurize,
+    main_text,
     playwright_available,
     screen_text,
 )
@@ -149,6 +151,96 @@ def test_fetch_refused_is_error_state():
     assert res["state"] == "error"
     assert res["status"] == 0
     assert res["challenge"] is None
+
+
+# -- readability + discovery (pure, offline) ---------------------------
+
+PORTAL_HTML = """<html><head><title>Grants Portal - RFPs</title>""" \
+    """<script>var x = 1;</script></head><body>""" \
+    """<header>Site menu</header><nav>Home | About</nav>""" \
+    """<main><h1>Open RFPs</h1><p>NSF AI Institutes due March.</p>""" \
+    """<a href="/rfp/1">RFP details</a>""" \
+    """<form action="/search" method="post">""" \
+    """<input name="q" type="search"><input name="go" type="submit">""" \
+    """</form></main><footer>copyright</footer></body></html>"""
+
+
+def test_main_text_drops_chrome_keeps_content():
+    res = main_text(PORTAL_HTML)
+    assert res["title"] == "Grants Portal - RFPs"
+    assert "Open RFPs" in res["text"]
+    assert "Site menu" not in res["text"]
+    assert "copyright" not in res["text"]
+    assert "var x" not in res["text"]
+
+
+def test_discover_html_resolves_links_and_forms():
+    res = discover_html(PORTAL_HTML, "https://portal.example/")
+    assert {"text": "RFP details",
+            "href": "https://portal.example/rfp/1"} in res["links"]
+    assert len(res["forms"]) == 1
+    form = res["forms"][0]
+    assert form["action"] == "https://portal.example/search"
+    assert form["method"] == "post"
+    assert {"name": "q", "type": "search"} in form["fields"]
+
+
+# -- fetch against a local server (localhost only, no internet) --------
+
+def _make_local_site():
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    import threading
+    pages = {"/ok": (200, PORTAL_HTML),
+             "/wall": (403, "Just a moment... cf-chl widget")}
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            code, body = pages.get(self.path, (404, "nope"))
+            data = body.encode("utf-8")
+            self.send_response(code)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, "http://127.0.0.1:%d" % server.server_address[1]
+
+
+@pytest.fixture(scope="module")
+def local_site():
+    server, base = _make_local_site()
+    yield base
+    server.shutdown()
+
+
+def test_fetch_ok_shapes_main_links_forms(local_site):
+    res = fetch(local_site + "/ok", timeout_s=5)
+    assert res["state"] == "ok"
+    assert res["attempts"] == 1
+    assert res["title"] == "Grants Portal - RFPs"
+    assert "Site menu" not in res["text"]
+    assert any(l["href"].endswith("/rfp/1") for l in res["links"])
+    assert len(res["forms"]) == 1
+
+
+def test_fetch_wall_blocked_without_retry(local_site):
+    res = fetch(local_site + "/wall", timeout_s=5, backoff_s=0)
+    assert res["state"] == "blocked"
+    assert res["challenge"] == "cloudflare-iuam"
+    assert res["attempts"] == 1
+
+
+def test_fetch_refused_honors_retry_budget():
+    res = fetch("http://127.0.0.1:9/nope", timeout_s=5,
+                retries=2, backoff_s=0)
+    assert res["state"] == "error"
+    assert res["attempts"] == 3
 
 # -- lazy playwright contract ------------------------------------------
 

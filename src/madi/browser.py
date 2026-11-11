@@ -32,6 +32,8 @@ import os
 import random
 import re
 import time
+from html.parser import HTMLParser
+from urllib.error import HTTPError
 import urllib.parse as _parse
 import urllib.request as _request
 
@@ -44,7 +46,9 @@ __all__ = [
     "fetch",
     "playwright_available",
     "RelevanceScorer",
+    "discover_html",
     "featurize",
+    "main_text",
     "screen_text",
 ]
 
@@ -145,40 +149,85 @@ def _shape(url, final_url, status, state, text="", title="",
     }
 
 
-def fetch(url, timeout_s=TIMEOUT_S):
+def fetch(url, timeout_s=TIMEOUT_S, retries=2, backoff_s=1.0):
     """Rung 1+2: stdlib GET with browser headers, challenge-classified.
 
     Never needs Playwright. Returns the shaped result dict; raises
     nothing -- transport failures come back as ``state: error``.
+    Transient failures (connection errors, 429/503 with no challenge
+    marker) retry up to ``retries`` times with linear backoff; named
+    walls and clean HTTP errors never retry. The result carries
+    ``attempts``, plus ``links``/``forms`` discovered in the HTML and
+    readability-cleaned ``text``.
     """
     start = time.perf_counter()
-    try:
-        req = _request.Request(url, headers=BROWSER_HEADERS)
-        with _request.urlopen(req, timeout=timeout_s) as r:
-            raw = r.read()
-            status = r.status
-            headers = dict(r.headers or {})
-            final = r.geturl()
-    except Exception as e:
+    attempts = 0
+    while True:
+        attempts += 1
+        try:
+            req = _request.Request(url, headers=BROWSER_HEADERS)
+            with _request.urlopen(req, timeout=timeout_s) as r:
+                raw = r.read()
+                status = r.status
+                headers = dict(r.headers or {})
+                final = r.geturl()
+        except HTTPError as e:
+            # urlopen raises for 4xx/5xx: capture code/headers/body so
+            # the challenge classifier below sees them instead of a
+            # transport error. Without this the blocked path is dead.
+            try:
+                raw = e.read()
+            except Exception:
+                raw = b""
+            status = e.code
+            try:
+                headers = dict(e.headers or {})
+            except Exception:
+                headers = {}
+            try:
+                final = e.geturl()
+            except Exception:
+                final = url
+        except Exception as e:
+            if attempts <= retries:
+                time.sleep(backoff_s * attempts)
+                continue
+            ms = int((time.perf_counter() - start) * 1000)
+            res = _shape(url, url, 0, "error", detail=str(e)[:200],
+                         elapsed_ms=ms)
+            res["attempts"] = attempts
+            return res
         ms = int((time.perf_counter() - start) * 1000)
-        return _shape(url, url, 0, "error", detail=str(e)[:200],
-                      elapsed_ms=ms)
-    ms = int((time.perf_counter() - start) * 1000)
-    challenge = None
-    if status in (403, 429, 503):
-        challenge = detect_challenge(status, headers, raw)
-    if challenge:
-        return _shape(url, final, status, "blocked", challenge=challenge,
-                      detail="named wall: %s" % challenge, elapsed_ms=ms)
-    if status >= 400:
-        return _shape(url, final, status, "error",
-                      detail="HTTP %d, no challenge marker" % status,
-                      elapsed_ms=ms)
-    try:
-        text = raw.decode("utf-8", "replace")
-    except Exception:
-        text = ""
-    return _shape(url, final, status, "ok", text=text, elapsed_ms=ms)
+        challenge = None
+        if status in (403, 429, 503):
+            challenge = detect_challenge(status, headers, raw)
+        if challenge:
+            res = _shape(url, final, status, "blocked", challenge=challenge,
+                         detail="named wall: %s" % challenge,
+                         elapsed_ms=ms)
+            res["attempts"] = attempts
+            return res
+        if status in (429, 503) and attempts <= retries:
+            time.sleep(backoff_s * attempts)
+            continue
+        if status >= 400:
+            res = _shape(url, final, status, "error",
+                         detail="HTTP %d, no challenge marker" % status,
+                         elapsed_ms=ms)
+            res["attempts"] = attempts
+            return res
+        try:
+            html = raw.decode("utf-8", "replace")
+        except Exception:
+            html = ""
+        main = main_text(html)
+        disc = discover_html(html, final)
+        res = _shape(url, final, status, "ok", text=main["text"],
+                     title=main["title"], elapsed_ms=ms)
+        res["attempts"] = attempts
+        res["links"] = disc["links"]
+        res["forms"] = disc["forms"]
+        return res
 
 
 class HyperEdgeBrowser:
@@ -387,6 +436,29 @@ class HyperEdgeBrowser:
         terms = query.split() if isinstance(query, str) else list(query)
         return RelevanceScorer(seed=seed).score_page(text or "", terms)
 
+    def discover(self, cap_links=200, cap_forms=20):
+        """Map the current page: links (text+href) and forms (fields)."""
+        if self._page is None:
+            return {"state": "error", "links": [], "forms": [],
+                    "detail": "no page yet"}
+        try:
+            data = self._page.evaluate(
+                """() => ({
+                  links: [...document.links].slice(0, %d)
+                    .map(a => ({text: (a.innerText||'').trim().slice(0,120),
+                                href: a.href})),
+                  forms: [...document.forms].slice(0, %d)
+                    .map(f => ({action: f.action, method: f.method,
+                                fields: [...f.elements].filter(e => e.name)
+                                  .slice(0,50)
+                                  .map(e => ({name: e.name, type: e.type}))}))
+                })""" % (cap_links, cap_forms))
+        except Exception as e:
+            return {"state": "error", "links": [], "forms": [],
+                    "detail": "discover failed: %s" % str(e)[:160]}
+        return {"state": "ok", "links": data.get("links", []),
+                "forms": data.get("forms", [])}
+
     def screenshot(self, name):
         """Capture the current page into ``evidence_dir``; returns path."""
         if not self.evidence_dir:
@@ -399,6 +471,121 @@ class HyperEdgeBrowser:
             "%s_%s.png" % (time.strftime("%Y%m%d_%H%M%S"), safe))
         self._page.screenshot(path=dest)
         return dest
+
+
+# ---------------------------------------------------------------------
+# Readability + discovery over raw HTML (stdlib only, no browser needed).
+# ---------------------------------------------------------------------
+
+_SKIP_TAGS = {"script", "style", "noscript", "header", "nav",
+              "footer", "aside"}
+
+
+class _MainTextParser(HTMLParser):
+    """Collect title + visible text outside chrome tags."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.skip_depth = 0
+        self.in_title = False
+        self.title_parts = []
+        self.chunks = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in _SKIP_TAGS:
+            self.skip_depth += 1
+        elif tag == "title":
+            self.in_title = True
+
+    def handle_endtag(self, tag):
+        if tag in _SKIP_TAGS and self.skip_depth:
+            self.skip_depth -= 1
+        elif tag == "title":
+            self.in_title = False
+
+    def handle_data(self, data):
+        if self.in_title:
+            self.title_parts.append(data)
+        elif not self.skip_depth:
+            text = data.strip()
+            if text:
+                self.chunks.append(text)
+
+
+def main_text(html):
+    """Readability pass: title + visible text minus chrome tags.
+
+    Heuristic, documented: drops script/style/noscript/header/nav/
+    footer/aside, collapses whitespace. What remains is the content
+    a scorer or screen should read.
+    """
+    parser = _MainTextParser()
+    try:
+        parser.feed(html or "")
+    except Exception:
+        pass
+    title = " ".join("".join(parser.title_parts).split())
+    lines = []
+    for chunk in parser.chunks:
+        for line in chunk.splitlines():
+            line = " ".join(line.split())
+            if line:
+                lines.append(line)
+    return {"title": title, "text": "\n".join(lines)}
+
+
+class _DiscoverParser(HTMLParser):
+    """Collect links (text+href) and forms (action/method/fields)."""
+
+    def __init__(self, base_url):
+        super().__init__(convert_charrefs=True)
+        self.base = base_url or ""
+        self.links = []
+        self.forms = []
+        self._link = None
+        self._form = None
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "a" and "href" in attrs:
+            self._link = {"href": _parse.urljoin(self.base, attrs["href"]),
+                          "parts": []}
+        elif tag == "form":
+            self._form = {"action": _parse.urljoin(
+                              self.base, attrs.get("action", "")),
+                          "method": (attrs.get("method", "get")).lower(),
+                          "fields": []}
+        elif tag in ("input", "select", "textarea") and self._form \
+                is not None:
+            if attrs.get("name"):
+                self._form["fields"].append({
+                    "name": attrs["name"],
+                    "type": attrs.get("type", "text")})
+
+    def handle_data(self, data):
+        if self._link is not None:
+            self._link["parts"].append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "a" and self._link is not None:
+            text = " ".join("".join(self._link["parts"]).split())
+            if self._link["href"]:
+                self.links.append({"text": text[:120],
+                                   "href": self._link["href"]})
+            self._link = None
+        elif tag == "form" and self._form is not None:
+            self.forms.append(self._form)
+            self._form = None
+
+
+def discover_html(html, base_url=""):
+    """Map raw HTML: links resolved against `base_url`, plus forms."""
+    parser = _DiscoverParser(base_url)
+    try:
+        parser.feed(html or "")
+    except Exception:
+        pass
+    return {"links": parser.links[:200], "forms": parser.forms[:20]}
 
 
 # ---------------------------------------------------------------------
