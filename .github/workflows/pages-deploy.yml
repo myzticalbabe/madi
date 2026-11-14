@@ -1,0 +1,161 @@
+name: Deploy Domain Trees to GitHub Pages
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install networkx matplotlib pandas pygraphviz
+          # Try to install graphify if available
+          pip install graphify 2>/dev/null || echo "graphify not on PyPI, using local"
+
+      - name: Generate domain atlases
+        run: |
+          # Clone the monorepo for domain_trees.py and render_tree.py
+          git clone --depth 1 https://github.com/myzticalbabe/azazael.git ../azazael-mono
+          cd ../azazael-mono
+          python azazael/tools/domain_trees.py --domain sentinel 2>&1 | tail -20
+          python azazael/tools/domain_trees.py 2>&1 | tail -30
+          # Copy outputs
+          mkdir -p ../pages-output/yggdrasil_forest
+          cp -r ~/yggdrasil_forest/* ../pages-output/yggdrasil_forest/ 2>/dev/null || true
+
+      - name: Generate HTML visualizations
+        run: |
+          cd ../azazael-mono
+          # Create interactive index.html
+          cat > ../pages-output/index.html << 'HTMLEOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azazael Domain Atlas — Public View</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #c9d1d9; line-height: 1.6; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+    header { text-align: center; margin-bottom: 3rem; border-bottom: 1px solid #30363d; padding-bottom: 2rem; }
+    h1 { font-size: 2.5rem; background: linear-gradient(135deg, #58a6ff, #a371f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { color: #8b949e; margin-top: 0.5rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.5rem; transition: transform 0.2s, border-color 0.2s; }
+    .card:hover { transform: translateY(-4px); border-color: #58a6ff; }
+    .card h3 { color: #58a6ff; margin-bottom: 0.75rem; font-size: 1.25rem; }
+    .stats { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; font-size: 0.875rem; }
+    .stat { background: #21262d; padding: 0.25rem 0.75rem; border-radius: 4px; color: #8b949e; }
+    .stat strong { color: #c9d1d9; }
+    .links { margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .btn { display: inline-block; padding: 0.5rem 1rem; background: #238636; color: white; text-decoration: none; border-radius: 6px; font-size: 0.875rem; transition: background 0.2s; }
+    .btn:hover { background: #2ea043; }
+    .btn-secondary { background: #30363d; }
+    .btn-secondary:hover { background: #484f58; }
+    .badge { display: inline-block; padding: 0.125rem 0.5rem; background: #21262d; border-radius: 4px; font-size: 0.75rem; color: #8b949e; margin-right: 0.25rem; margin-bottom: 0.25rem; }
+    .footer { text-align: center; margin-top: 3rem; color: #484f58; font-size: 0.875rem; }
+    .search-box { width: 100%; max-width: 400px; padding: 0.75rem; background: #161b22; border: 1px solid #30363d; border-radius: 8px; color: #c9d1d9; font-size: 1rem; margin: 0 auto 2rem; display: block; }
+    .search-box:focus { outline: none; border-color: #58a6ff; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Azazael Domain Atlas</h1>
+      <p class="subtitle">Interactive exploration of the Azazael ecosystem architecture</p>
+      <input type="text" class="search-box" id="search" placeholder="Search domains, components, modules...">
+    </header>
+    <main>
+      <div class="grid" id="domainGrid"></div>
+    </main>
+    <footer class="footer">
+      <p>Generated from <a href="https://github.com/myzticalbabe/azazael" style="color: #58a6ff;">myzticalbabe/azazael</a> monorepo | 
+      <a href="https://github.com/myzticalbabe" style="color: #58a6ff;">@myzticalbabe</a> | 
+      License: <a href="https://github.com/myzticalbabe/azazael/blob/main/LICENSE" style="color: #58a6ff;">SOUL FORGE v1.0</a></p>
+    </footer>
+  </div>
+  <script>
+    // Domain data - populated from forest_manifest.json
+    const domains = [
+      { name: "sentinel", title: "Sentinel (Rules Dev)", trees: 12, modules: 50, lines: 39600, classes: 42, worms: 0, rules: 66, description: "Rules development domain — core mandates, compliance, sentinel gates" },
+      { name: "cain", title: "CAIN", trees: 8, modules: 94, lines: 37635, classes: 43, worms: 0, rules: 0, description: "CAIN video rendering pipeline — Puppeteer capture, session injection" },
+      { name: "eve_rani", title: "Eve/Rani", trees: 2, modules: 22, lines: 5936, classes: 55, worms: 0, rules: 0, description: "Eve Unleashed & Rani components — local AI inferencing, Python REPL" },
+      { name: "hives", title: "Hives (Swarm)", trees: 2, modules: 151, lines: 74752, classes: 417, worms: 206, rules: 0, description: "Swarm intelligence — 417 classes, 206 worms for distributed processing" },
+      { name: "gosp", title: "GOSP", trees: 5, modules: 3, lines: 357, classes: 1, worms: 0, rules: 0, description: "GOSP — three scripts plus evidence directories" },
+      { name: "ml", title: "ML (Shards/Modules)", trees: 2, modules: 50, lines: 17470, classes: 104, worms: 0, rules: 0, description: "ML platform — shards, modules, training pipeline integration" },
+      { name: "shards", title: "Shards (Repository)", trees: 2, modules: 4, lines: 1125, classes: 0, worms: 0, rules: 0, description: "Shard repository — flat root with direct file structure" },
+      { name: "edge0", title: "Edge0", trees: 5, modules: 161, lines: 30802, classes: 142, worms: 0, rules: 0, description: "Edge0 — BCC re-investigation edges, flock grading, proof layers" }
+    ];
+
+    const grid = document.getElementById('domainGrid');
+    const search = document.getElementById('search');
+
+    function renderDomains(filter = '') {
+      grid.innerHTML = '';
+      const filtered = domains.filter(d => 
+        d.name.toLowerCase().includes(filter.toLowerCase()) ||
+        d.title.toLowerCase().includes(filter.toLowerCase()) ||
+        d.description.toLowerCase().includes(filter.toLowerCase())
+      );
+      filtered.forEach(domain => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <h3>${domain.title}</h3>
+          <p>${domain.description}</p>
+          <div class="stats">
+            <span class="stat"><strong>${domain.trees}</strong> trees</span>
+            <span class="stat"><strong>${domain.modules}</strong> modules</span>
+            <span class="stat"><strong>${domain.lines.toLocaleString()}</strong> lines</span>
+            <span class="stat"><strong>${domain.classes}</strong> classes</span>
+            ${domain.worms > 0 ? `<span class="stat"><strong>${domain.worms}</strong> worms</span>` : ''}
+            ${domain.rules > 0 ? `<span class="stat"><strong>${domain.rules}</strong> rules</span>` : ''}
+          </div>
+          <div class="links">
+            <a href="https://github.com/myzticalbabe/azazael/tree/main/azazael/tools/domain_trees.py" class="btn" target="_blank">Source Tool</a>
+            <a href="https://github.com/myzticalbabe/azazael" class="btn btn-secondary" target="_blank">Monorepo</a>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    search.addEventListener('input', (e) => renderDomains(e.target.value));
+    renderDomains();
+  </script>
+</body>
+</html>
+HTMLEOF
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ../pages-output
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
