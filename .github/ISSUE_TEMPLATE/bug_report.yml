@@ -1,0 +1,72 @@
+name: Bug report
+description: Report something that does not work as documented
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. A minimal reproduction gets a fix much faster than a
+        description of symptoms.
+
+        `madi` is a library, so please include the code you ran and what it returned.
+        The result dicts carry `state` (`ok`, `blocked`, `error`) — which one did you
+        get?
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+      description: Paste the full error output, not a paraphrase.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of madi does this affect?
+      options:
+        - fetch (the stdlib GET and its result shape)
+        - Challenge taxonomy (detect_challenge, naming the wall)
+        - Readability extraction (main_text)
+        - Discovery (discover_html — links and forms)
+        - Relevance scorer (featurize, RelevanceScorer)
+        - Adversarial screen (screen_text)
+        - Render / interact (HyperEdgeBrowser, Playwright)
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: e.g. commit 42ed791, or the release tag v0.1.0
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system and runtime
+      placeholder: e.g. Windows 11, Python 3.13.14 / macOS 14, Python 3.13.2
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues for the same problem
+          required: true
+        - label: This is not a security vulnerability (those are reported privately per SECURITY.md)
+          required: true
+        - label: If this is about the render rung, I have Playwright and Chromium installed
