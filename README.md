@@ -28,6 +28,20 @@ python -m madi --help
 
 See [Domain Atlas](https://myzticalbabe.github.io) for interactive visualization.
 
+## Learning, access and community
+
+This project is set up to be usable by teachers, club leaders and
+self-taught learners as well as by developers:
+
+| Document | What it covers |
+|---|---|
+| [STEM.md](STEM.md) | What this project teaches, and how to run it with a class, club or troop |
+| [ACCESSIBILITY.md](ACCESSIBILITY.md) | What is keyboard-accessible, what has been verified, and what has not |
+| [SUPPORT.md](SUPPORT.md) | Where to ask, and what to include |
+| [SECURITY.md](SECURITY.md) | How to report a vulnerability privately |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute, including a path for first-timers |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Expected behaviour in issues and discussions |
+
 ## License
 
 This project is licensed under the **SOUL FORGE License v1.0** — see [LICENSE](LICENSE) for details.
