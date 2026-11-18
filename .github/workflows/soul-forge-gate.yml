@@ -1,5 +1,9 @@
 name: Soul Forge Gate
-on: [pull_request]
+on:
+  pull_request:
+  # Dispatchable so the gate can be run and debugged by hand; a PR-only
+  # trigger means a broken gate is invisible until someone opens a PR.
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
