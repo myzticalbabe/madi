@@ -1,18 +1,30 @@
 name: Soul Forge Gate
 on: [pull_request]
+permissions:
+  contents: read
+concurrency:
+  group: soul-forge-gate-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   soul-forge-gate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      - name: Install dependencies
-        run: |
-          pip install axe-core playwright
-          playwright install
+          python-version: '3.12'
+          # No `cache: 'pip'`. These audits import nothing outside the standard
+          # library, and most repos carrying this workflow have no
+          # requirements.txt or pyproject.toml, which makes setup-python fail.
+          # The previous `pip install axe-core playwright` step is gone for the
+          # same reason: `axe-core` is an npm package, so that step could only
+          # ever fail, and the audits never needed it.
+
       - name: Inclusion Audit
         run: python tools/audit_inclusion.py --path . --fail-on high
+
       - name: Accessibility Audit
         run: python tools/audit_accessibility.py --path . --fail-on high
