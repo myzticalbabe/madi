@@ -1,0 +1,11 @@
+# REUSE.toml -- machine-readable licensing (https://reuse.software).
+# Soul Forge License v1.0 is a custom license, not on the SPDX License
+# List, so it is identified as LicenseRef-SoulForge-1.0 (SPDX spec,
+# "other licensing information detected"). Canonical text: LICENSE.
+# SPDX License List submission pending with the license steward.
+version = 1
+
+[[annotations]]
+path = "**"
+SPDX-FileCopyrightText = "myzticalbabe"
+SPDX-License-Identifier = "LicenseRef-SoulForge-1.0"
