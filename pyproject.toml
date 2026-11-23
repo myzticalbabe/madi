@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "The one browsing instrument: fetch, challenge taxonomy, readability, discovery, native scorer, native screen"
 readme = "README.md"
 authors = [{name = "Azazael"}]
-license = {text = "CDDL-1.1"}
+license = {text = "LicenseRef-SoulForge-1.0"}
 requires-python = ">=3.13"
 classifiers = [
     "Development Status :: 4 - Beta",
