@@ -1,46 +1,37 @@
-name: Feature request
-description: Suggest a capability, an improvement or an exercise
-title: "[feature] "
-labels: ["enhancement"]
+name: Feature Request
+description: Suggest a new feature or enhancement
+title: "[FEATURE] "
+labels: ["enhancement", "triage"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for the suggestion. The most useful requests describe the problem, not
-        only the solution.
+        Thanks for suggesting a feature!
+
   - type: textarea
-    id: problem
+    id: description
     attributes:
-      label: What problem does this solve?
-      description: Describe the situation you are in, and what makes it hard today.
+      label: Feature Description
+      placeholder: "Describe the feature you'd like to see"
     validations:
       required: true
+
   - type: textarea
-    id: proposal
+    id: usecase
     attributes:
-      label: What would you like to happen?
+      label: Use Case
+      placeholder: "Why is this needed? What problem does it solve?"
     validations:
       required: true
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: What have you tried instead?
-      description: Workarounds, other tools, and why they were not enough.
+
   - type: dropdown
-    id: area
+    id: priority
     attributes:
-      label: Which area does this touch?
+      label: Priority
       options:
-        - Documentation or exercises
-        - Command line behaviour
-        - Library or API
-        - Packaging and installation
-        - Accessibility
-        - Something else
-  - type: checkboxes
-    id: checks
-    attributes:
-      label: Before submitting
-      options:
-        - label: I searched the existing issues for the same request
-          required: true
+        - High (critical for workflow)
+        - Medium (nice to have)
+        - Low (future consideration)
+      default: 1
+    validations:
+      required: true

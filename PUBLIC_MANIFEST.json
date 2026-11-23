@@ -1,0 +1,42 @@
+{
+  "name": "madi",
+  "version": "1.0.0",
+  "description": "madi repository",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/myzticalbabe/madi.git"
+  },
+  "homepage": "https://github.com/myzticalbabe/madi",
+  "bugs": {
+    "url": "https://github.com/myzticalbabe/madi/issues"
+  },
+  "license": "MIT",
+  "author": "madi Contributors",
+  "maintainers": [
+    {
+      "name": "myzticalbabe",
+      "email": "maintainers@myzticalbabe.com",
+      "web": "https://github.com/myzticalbabe"
+    }
+  ],
+  "keywords": [
+    "stem",
+    "education",
+    "open-source"
+  ],
+  "categories": [
+    "education",
+    "stem"
+  ],
+  "support": {
+    "documentation": "https://github.com/myzticalbabe/madi/wiki",
+    "discussions": "https://github.com/myzticalbabe/madi/discussions",
+    "security": "https://github.com/myzticalbabe/madi/security/advisories"
+  },
+  "governance": {
+    "code_of_conduct": "CODE_OF_CONDUCT.md",
+    "contributing": "CONTRIBUTING.md",
+    "security_policy": "SECURITY.md",
+    "disclosure_policy": "DISCLOSURE_POLICY.md"
+  }
+}

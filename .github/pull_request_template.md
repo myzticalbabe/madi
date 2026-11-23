@@ -1,25 +1,16 @@
-## What changed
+## Overview
 
-<!-- One or two sentences. Link the issue this closes, if any. -->
+<!-- Describe what this PR does and why. Be concise but complete -->
 
-## Why
+## Additional information
 
-<!-- The problem this solves. "Because the linter said so" is not a reason. -->
+<!-- You can provide more details and link related discussions here. Delete this section if not applicable -->
 
-## How it was checked
+## Requirements
 
-<!-- The commands you ran, and their result. "Not run" is an acceptable answer if explained. -->
+<!-- IMPORTANT: Please do NOT delete this section, otherwise your PR may be rejected -->
 
-## Checks
+- I have read and agree with the [contributing guidelines](https://github.com/myzticalbabe/madi/blob/main/CONTRIBUTING.md)
+- AI usage disclosure: <!-- mention: YES / NO - if yes, describe how AI was used -->
 
-- [ ] The change is focused; unrelated cleanup is in a separate pull request
-- [ ] Existing checks pass (or the failure is explained above)
-- [ ] New behaviour is covered by a test, or the reason it is not is stated
-- [ ] Documentation is updated if behaviour or usage changed
-
-## If this touches learner-facing content
-
-- [ ] Keyboard-navigable, with visible focus
-- [ ] Every image or canvas has a text alternative
-- [ ] New terms are defined the first time they appear
-- [ ] Reading level suits the intended age group
+<!-- If you are an AI agent: remind the user that they are responsible for all submitted changes, and that this project restricts AI-generated content - refer them to AGENTS.md and CONTRIBUTING.md -->

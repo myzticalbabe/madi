@@ -1,11 +1,8 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
-  - name: Getting help
-    url: https://github.com/myzticalbabe/madi/blob/HEAD/SUPPORT.md
-    about: Where to ask questions, and what to include.
-  - name: Running this in a classroom or club
-    url: https://github.com/myzticalbabe/madi/blob/HEAD/STEM.md
-    about: Session plan, prerequisites and vocabulary for educators.
-  - name: Report a security vulnerability
-    url: https://github.com/myzticalbabe/madi/security/advisories/new
-    about: Please report security problems privately, never in a public issue.
+  - name: Got a question?
+    url: https://github.com/myzticalbabe/madi/discussions/categories/q-a
+    about: Ask a question there!
+  - name: Want to contribute?
+    url: https://github.com/myzticalbabe/madi/wiki/contribute
+    about: Head to the contribution guide
